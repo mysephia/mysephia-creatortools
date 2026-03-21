@@ -109,6 +109,27 @@
             <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse border border-black"></div>
             SYSTEM ONLINE
         </div>
+        <div class="flex gap-2 items-center">
+    <input type="password" id="apiInputUI" placeholder="Paste API Key di sini..." class="border-2 border-black px-2 py-1 text-[10px] w-32 focus:outline-none focus:w-48 transition-all">
+    <button onclick="simpanApiKey()" class="bg-black text-white px-2 py-1 text-[10px] font-bold border-2 border-black hover:bg-slate-800">SIMPAN</button>
+</div>
+        function simpanApiKey() {
+    const inputKey = document.getElementById("apiInputUI").value;
+    if(inputKey.trim() === "") {
+        alert("API Key tidak boleh kosong!");
+        return;
+    }
+    apiKey = inputKey;
+    localStorage.setItem("mysephia_api_key", apiKey);
+    alert("API Key berhasil disimpan di browser komputermu! Silakan jalankan workflow.");
+}
+
+// Tambahkan ini agar kotak otomatis terisi jika sebelumnya sudah disimpan
+window.addEventListener('DOMContentLoaded', () => {
+    if(apiKey) {
+        document.getElementById("apiInputUI").value = apiKey;
+    }
+});
     </nav>
 
     <main class="max-w-[1200px] mx-auto p-4 md:p-6 mb-16">
@@ -363,7 +384,7 @@
     </div>
 
     <script>
-        const apiKey = ""; 
+        let apiKey = localStorage.getItem("mysephia_api_key") || ""; 
         
         let activeWorkflow = null;
         let sourceImage = null;
@@ -812,7 +833,7 @@
         // Fungsi API yang support text-only jika imageSourceOverride di set null
         async function callGemini(promptText, mode = 'image', targetRatio = null, imageSourceOverride = null) {
             const textModel = 'gemini-1.5-flash';
-            const imageModel = 'gemini-2.5-flash-image-preview'; 
+            const imageModel = 'gemini-2.5-flash-image'; 
             const modelName = mode === 'text' ? textModel : imageModel;
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
             
