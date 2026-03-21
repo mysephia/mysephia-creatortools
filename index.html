@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mysephia Starfight - AI Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Space+Mono', monospace;
+            background-color: #f0f0f0;
+            color: black;
+        }
+
+        .neo-shadow {
+            box-shadow: 5px 5px 0px 0px rgba(0,0,0,1);
+        }
+
+        .neo-shadow-lg {
+            box-shadow: 8px 8px 0px 0px rgba(0,0,0,1);
+        }
+
+        .neo-border {
+            border: 4px solid black;
+        }
+
+        .btn-neo:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #000;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Running Text Animation */
+        .marquee-text {
+            display: inline-block;
+            white-space: nowrap;
+            animation: marquee 54s linear infinite;
+            padding-left: 100%; /* Start from right */
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-left: 2px solid black;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #000; 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #333; 
+        }
+
+        /* Canvas pattern background for transparency preview */
+        .transparent-pattern {
+            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                              linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative pb-24">
+
+    <!-- MODAL PREVIEW -->
+    <div id="previewModal" class="fixed inset-0 z-[9999] bg-black/90 hidden flex flex-col items-center justify-center p-4">
+        <button onclick="closePreview()" class="absolute top-6 right-6 text-white p-2 border-2 border-white rounded-full hover:bg-white hover:text-black transition-all">
+            <i data-lucide="x" class="w-8 h-8"></i>
+        </button>
+        <div class="text-white mb-2 text-xs font-bold" id="previewResolution"></div>
+        <img id="previewFullImage" src="" class="max-w-full max-h-[75vh] object-contain border-4 border-white shadow-2xl transparent-pattern">
+        <button id="downloadBtn" class="mt-8 bg-white text-black px-8 py-3 font-black flex items-center gap-2 border-4 border-black hover:translate-y-1 transition-transform shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
+            <i data-lucide="download" class="w-5 h-5"></i> UNDUH PNG HIGH-RES
+        </button>
+    </div>
+
+    <!-- HEADER -->
+    <nav class="border-b-4 border-black bg-white px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div class="cursor-pointer" onclick="resetToHome()">
+            <h1 class="text-2xl font-black uppercase tracking-tighter">MYSEPHIA</h1>
+            <div class="bg-black text-white text-[8px] px-2 py-0.5 font-bold w-fit mt-0.5 tracking-widest uppercase">Creative Tools V2.8</div>
+        </div>
+        <div class="hidden md:flex border-2 border-black px-3 py-1.5 items-center gap-2 font-bold text-[9px] uppercase bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse border border-black"></div>
+            SYSTEM ONLINE
+        </div>
+    </nav>
+
+    <main class="max-w-[1200px] mx-auto p-4 md:p-6 mb-16">
+        <!-- HOME SCREEN -->
+        <div id="homeScreen">
+            <h2 class="text-xl font-black uppercase mb-8 border-l-4 border-black pl-4">Pilih Workflow Engine</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="workflowGrid">
+                <!-- Workflow cards will be generated here -->
+            </div>
+        </div>
+
+        <!-- WORKFLOW SCREEN -->
+        <div id="workflowScreen" class="hidden space-y-6">
+            <div class="flex items-center gap-4">
+                <button onclick="resetToHome()" class="border-4 border-black p-2 bg-white hover:bg-black hover:text-white transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <i data-lucide="arrow-left" class="w-[18px] h-[18px]"></i>
+                </button>
+                <div id="activeWorkflowTitle" class="bg-black text-white px-6 py-2 text-lg font-black uppercase border-4 border-black italic tracking-widest">ENHANCE</div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- SIDEBAR PANEL -->
+                <div class="lg:col-span-4 space-y-4">
+                    <!-- INPUT MEDIA -->
+                    <div class="bg-white border-4 border-black neo-shadow p-1">
+                        <div class="p-2 border-b-2 border-black bg-slate-50 flex items-center justify-between">
+                            <span class="text-[9px] font-black uppercase" id="inputMediaLabel">INPUT MEDIA</span>
+                            <button onclick="clearInput()" class="text-red-500 hidden hover:bg-red-100 p-1" id="clearBtn"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                        </div>
+                        <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="h-[140px] m-1 border-2 border-dashed border-black bg-slate-100 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-slate-200 transition-colors relative">
+                            <div id="uploadPlaceholder" class="flex flex-col items-center gap-2 opacity-30 uppercase font-black text-[9px]">
+                                <i data-lucide="upload" class="w-5 h-5"></i>
+                                <span>Upload Foto</span>
+                            </div>
+                            <img id="sourcePreview" src="" class="hidden w-full h-full object-contain p-2">
+                            <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFileSelect(event)">
+                        </div>
+                    </div>
+
+                    <!-- KONFIGURASI -->
+                    <div class="bg-white border-4 border-black neo-shadow">
+                        <div class="p-2 border-b-2 border-black bg-slate-50 flex items-center gap-2 font-black text-[9px] uppercase">
+                            <i data-lucide="box" class="w-3 h-3"></i> Konfigurasi
+                        </div>
+                        <div class="p-3 space-y-4">
+                            
+                            <!-- Enhance Options -->
+                            <div id="enhanceOptions" class="hidden space-y-3">
+                                <div class="p-2 border-2 border-slate-200 bg-slate-50 mb-2">
+                                    <p class="text-[8px] font-bold text-slate-500 italic"><i data-lucide="info" class="w-3 h-3 inline"></i> Resolusi output 4K terjamin untuk opsi 4x.</p>
+                                </div>
+                                <div>
+                                    <label class="text-[8px] font-black uppercase block mb-1">Noise Reduction</label>
+                                    <select id="enhanceNoise" class="w-full border-2 border-black p-2 text-[10px] font-bold bg-white focus:outline-none">
+                                        <option value="low">Low (Pertahankan tekstur)</option>
+                                        <option value="medium" selected>Medium (Seimbang)</option>
+                                        <option value="high">High (Sangat Halus & Bersih)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[8px] font-black uppercase block mb-1">Upscaling Factor (Microstock)</label>
+                                    <select id="enhanceUpscale" class="w-full border-2 border-black p-2 text-[10px] font-bold bg-white focus:outline-none">
+                                        <option value="1.5x">1.5x (~1.5K Resolusi)</option>
+                                        <option value="2x">2x (~2K Resolusi)</option>
+                                        <option value="4x" selected>4x (Max Sharpness 4K)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- BG Options -->
+                            <div id="bgOptions" class="hidden space-y-3">
+                                <div class="p-2 border-2 border-slate-200 bg-slate-50 mb-2">
+                                    <p class="text-[8px] font-bold text-slate-500 italic"><i data-lucide="info" class="w-3 h-3 inline"></i> Klik tombol di bawah untuk mengisi prompt otomatis, atau ketik manual instruksi Anda.</p>
+                                </div>
+                                <button type="button" onclick="fillRemoveBgPrompt()" class="w-full py-2 bg-black text-white text-[10px] font-bold hover:bg-slate-800 transition-colors border-2 border-black flex items-center justify-center gap-2">
+                                    <i data-lucide="scissors" class="w-4 h-4"></i> HAPUS BACKGROUND
+                                </button>
+                            </div>
+
+                            <!-- Resize Options -->
+                            <div id="resizeOptions" class="hidden space-y-2">
+                                <label class="text-[8px] font-black uppercase block">Aspect Ratio</label>
+                                <div class="grid grid-cols-2 gap-2" id="ratioGrid"></div>
+                            </div>
+
+                            <!-- Illustrate Options -->
+                            <div id="illustrateOptions" class="hidden space-y-3">
+                                <div class="p-2 border-2 border-slate-200 bg-indigo-50 border-l-4 border-l-indigo-400 mb-2">
+                                    <p class="text-[8px] font-bold text-slate-700 italic"><i data-lucide="palette" class="w-3 h-3 inline"></i> Tentukan mood palet warna ilustrasimu di sini.</p>
+                                </div>
+                                <label class="text-[8px] font-black uppercase block mb-1">Pilih Palet Warna</label>
+                                <div class="grid grid-cols-2 gap-2" id="paletteGrid">
+                                    <!-- Diisi oleh JS -->
+                                </div>
+                                <input type="text" id="customPaletteInput" placeholder="Ketik warna (Cth: Merah, Emas, Putih)" class="hidden w-full border-2 border-black p-2 text-[10px] font-bold bg-slate-50 focus:outline-none mt-2 transition-all">
+                            </div>
+
+                            <!-- Model Studio Options -->
+                            <div id="modelOptions" class="hidden space-y-3">
+                                <div>
+                                    <label class="text-[8px] font-black uppercase block mb-1">a. Jenis Model</label>
+                                    <select id="modelType" onchange="updateModelUI()" class="w-full border-2 border-black p-2 text-[10px] font-bold bg-white focus:outline-none">
+                                        <option value="Manusia">Manusia</option>
+                                        <option value="Mannequin">Manekin</option>
+                                        <option value="Tanpa Model">Tanpa Model</option>
+                                    </select>
+                                </div>
+
+                                <div id="modelDetailsWrapper" class="space-y-3">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-[8px] font-black uppercase block mb-1">b. Detail</label>
+                                            <select id="modelGender" class="w-full border-2 border-black p-2 text-[10px] font-bold bg-white focus:outline-none">
+                                                <option value="Male">Pria</option>
+                                                <option value="Female">Wanita</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="text-[8px] font-black uppercase block mb-1">c. Usia</label>
+                                            <select id="modelAge" onchange="checkCustomAge()" class="w-full border-2 border-black p-2 text-[10px] font-bold bg-white focus:outline-none">
+                                                <option value="Adult">Dewasa (Default)</option>
+                                                <option value="Child">Anak-anak</option>
+                                                <option value="Teenager">Remaja</option>
+                                                <option value="Elderly">Lansia</option>
+                                                <option value="Custom">Custom...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <input type="text" id="modelAgeCustom" placeholder="Ketik usia/deskripsi..." class="hidden w-full border-2 border-black p-2 text-[10px] font-bold bg-slate-50 focus:outline-none">
+
+                                    <div id="refUploadWrapper">
+                                        <label class="text-[8px] font-black uppercase block mb-1">d. Ref Wajah (Opsional)</label>
+                                        <div id="refUploadZone" onclick="document.getElementById('refInput').click()" class="h-[80px] border-2 border-dashed border-black bg-slate-50 flex items-center justify-center cursor-pointer relative overflow-hidden hover:bg-slate-100">
+                                            <span id="refPlaceholder" class="text-[8px] font-black uppercase text-center p-2 opacity-50">Upload Referensi Wajah</span>
+                                            <img id="refPreview" src="" class="hidden w-full h-full object-cover">
+                                            <input type="file" id="refInput" class="hidden" accept="image/*" onchange="handleRefSelect(event)">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="text-[8px] font-black uppercase block mb-1">e. Lokasi</label>
+                                    <select id="modelLocation" class="w-full border-2 border-black p-2 text-[10px] font-bold bg-white focus:outline-none">
+                                        <option value="Indoor Studio">Indoor Studio</option>
+                                        <option value="Outdoor Nature">Outdoor Nature</option>
+                                        <option value="Urban City">Urban City</option>
+                                        <option value="Luxury Interior">Luxury Interior</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Metadata Options -->
+                            <div id="metadataOptions" class="hidden space-y-3">
+                                <div class="p-2 border-2 border-slate-200 bg-slate-50 mb-2">
+                                    <p class="text-[8px] font-bold text-slate-500 italic"><i data-lucide="info" class="w-3 h-3 inline"></i> Otomatis menghasilkan Title & 50 Keywords dalam Bahasa Inggris.</p>
+                                </div>
+                            </div>
+
+                            <!-- Icon Gen Options (WORKFLOW 8) -->
+                            <div id="iconGenOptions" class="hidden space-y-4">
+                                <div>
+                                    <label class="text-[8px] font-black text-slate-500 uppercase block mb-1">1. Tulis Prompt</label>
+                                    <input type="text" id="iconKeyword" onkeyup="updateUIState()" placeholder="Ketik subject icon (cth: office tools, animals).." class="w-full border-2 border-slate-200 p-3 text-xs focus:outline-none focus:border-black rounded transition-all bg-slate-50">
+                                </div>
+
+                                <div>
+                                    <label class="text-[8px] font-black text-slate-500 uppercase block mb-2">2. Pilih Style Icon yang Ingin Dibuat</label>
+                                    <div class="grid grid-cols-2 lg:grid-cols-2 gap-2" id="iconStyleGrid">
+                                        
+                                        <!-- Style: Color -->
+                                        <button type="button" onclick="setIconStyle('Color')" id="iconStyle-Color" class="border-2 border-black p-3 flex flex-col items-center gap-2 hover:bg-slate-50 transition-all bg-slate-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] rounded-md">
+                                            <i data-lucide="building-2" class="w-10 h-10 text-black fill-yellow-400"></i>
+                                            <span class="text-[10px] font-bold text-slate-700">Color</span>
+                                        </button>
+
+                                        <!-- Style: Outline -->
+                                        <button type="button" onclick="setIconStyle('Outline')" id="iconStyle-Outline" class="border-2 border-slate-200 p-3 flex flex-col items-center gap-2 hover:border-black transition-all bg-white rounded-md">
+                                            <i data-lucide="building-2" class="w-10 h-10 text-black"></i>
+                                            <span class="text-[10px] font-bold text-slate-700">Outline</span>
+                                        </button>
+
+                                        <!-- Style: Flat -->
+                                        <button type="button" onclick="setIconStyle('Flat')" id="iconStyle-Flat" class="border-2 border-slate-200 p-3 flex flex-col items-center gap-2 hover:border-black transition-all bg-white rounded-md">
+                                            <i data-lucide="building-2" class="w-10 h-10 text-transparent fill-blue-500"></i>
+                                            <span class="text-[10px] font-bold text-slate-700">Flat</span>
+                                        </button>
+
+                                        <!-- Style: UI -->
+                                        <button type="button" onclick="setIconStyle('UI')" id="iconStyle-UI" class="border-2 border-slate-200 p-3 flex flex-col items-center gap-2 hover:border-black transition-all bg-white rounded-md">
+                                            <i data-lucide="layout-template" class="w-10 h-10 text-slate-800"></i>
+                                            <span class="text-[10px] font-bold text-slate-700">UI</span>
+                                        </button>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Instruksi Tambahan (Digunakan untuk workflow selain Metadata, Prompt, Icon) -->
+                            <div id="customPromptWrapper">
+                                <label class="text-[8px] font-black uppercase block mb-1" id="customPromptLabel">Instruksi Tambahan / Gaya Seni</label>
+                                <textarea id="customPrompt" placeholder="Contoh: Gaya seni anime, cat air, atau 3D render..." class="w-full border-2 border-black p-2 text-[10px] h-20 font-bold resize-none focus:outline-none focus:bg-slate-50"></textarea>
+                            </div>
+                        </div>
+                        <button id="runBtn" onclick="executeWorkflow()" class="w-full py-4 text-[10px] font-black uppercase tracking-widest border-t-2 border-black flex items-center justify-center gap-2 bg-black text-white hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors">
+                            <i data-lucide="rocket" class="w-[14px] h-[14px]"></i>
+                            <span>RUN WORKFLOW</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- VIEWPORT PANEL -->
+                <div class="lg:col-span-8">
+                    <div class="bg-white border-4 border-black min-h-[500px] flex flex-col relative neo-shadow-lg">
+                        <div class="bg-black text-white px-3 py-1 text-[8px] font-black uppercase flex items-center gap-2 italic">
+                            <i data-lucide="monitor" class="w-[10px] h-[10px]"></i> Output Viewport
+                        </div>
+                        <div id="outputContainer" class="flex-1 p-4 md:p-6 bg-slate-100 flex flex-col items-center justify-center relative overflow-hidden">
+                            <!-- Background Grid Pattern -->
+                            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
+                            
+                            <div id="emptyState" class="opacity-10 font-black text-4xl md:text-6xl uppercase tracking-tighter text-center">Mysephia AI</div>
+                            
+                            <div id="loadingState" class="hidden bg-white border-4 border-black p-8 flex flex-col items-center gap-4 z-10 shadow-xl">
+                                <div class="loader"></div>
+                                <span id="statusText" class="text-[9px] font-black uppercase tracking-widest animate-pulse">Memproses...</span>
+                            </div>
+
+                            <div id="resultState" class="hidden w-full flex flex-col items-center gap-6 z-10">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Running Text & Footer -->
+    <div class="fixed bottom-0 left-0 right-0 z-50 flex flex-col">
+        <div class="bg-black text-white py-1.5 overflow-hidden border-t-4 border-black w-full">
+            <div class="marquee-text font-bold text-[10px] uppercase tracking-widest">
+                Selamat bekerja dengan MYSEPHIA CREATIVE TOOL! Untuk support kepada creator, anda dapat membeli produk dari @starfightindonesia Terimakasih!
+            </div>
+        </div>
+        <footer class="bg-white border-t-2 border-white p-2 text-center text-[9px] font-black uppercase tracking-widest w-full shadow-[0px_-4px_10px_rgba(0,0,0,0.1)]">
+            MYSEPHIA Creative TOOLS ©2026 All rights reserved | Created by. @anantawns
+        </footer>
+    </div>
+
+    <div id="errorToast" class="fixed bottom-24 right-4 bg-red-500 text-white border-4 border-black p-4 hidden z-[9999] neo-shadow flex items-center gap-4 shadow-xl">
+        <span id="errorMessage" class="text-[10px] font-black uppercase">Gagal</span>
+        <button onclick="hideError()" class="p-1 bg-white text-black border-2 border-black hover:bg-slate-200"><i data-lucide="x" class="w-[14px] h-[14px]"></i></button>
+    </div>
+
+    <script>
+        const apiKey = ""; 
+        
+        let activeWorkflow = null;
+        let sourceImage = null;
+        let refImage = null;
+        let isProcessing = false;
+        let currentRatio = "1:1";
+        let currentPalette = "default";
+        let currentIconStyle = "Color"; // Style default untuk Icon Gen
+
+        const REMOVE_BG_PROMPT = "Hapus background (Remove background)";
+
+        const workflows = [
+            { id: 'enhance', title: '1. ENHANCED FOTO', icon: 'zap', desc: 'Restorasi Ultra-HD & Sharpness.' },
+            { id: 'bg', title: '2. RE-IMAGINE BG', icon: 'image-minus', desc: 'Hapus background & modifikasi.' },
+            { id: 'resize', title: '3. UBAH UKURAN', icon: 'maximize-2', desc: 'Generative Expand / Fill.' },
+            { id: 'illustrate', title: '4. BUAT ILUSTRASI', icon: 'layers', desc: 'Ubah foto ke gaya seni.' },
+            { id: 'model_studio', title: '5. MODEL STUDIO', icon: 'camera', desc: 'Virtual Photoshoot AI.' },
+            { id: 'prompt_gen', title: '6. HASILKAN PROMPT', icon: 'message-square-text', desc: 'Ekstrak deskripsi gambar.' },
+            { id: 'metadata_gen', title: '7. METADATA FOTO', icon: 'tags', desc: 'Title & Keywords Microstock.' },
+            { id: 'icon_gen', title: '8. ICON GEN', icon: 'layout-grid', desc: 'Hasilkan 16 set icon microstock.' } // Deskripsi diubah menjadi 16
+        ];
+
+        const ratios = [
+            { id: '1:1', label: '1:1', sub: 'Square' },
+            { id: '3:4', label: '3:4', sub: 'Portrait' },
+            { id: '9:16', label: '9:16', sub: 'Story' },
+            { id: '16:9', label: '16:9', sub: 'Video' }
+        ];
+
+        const palettes = [
+            { id: 'default', label: 'Warna Asli', colors: 'Gunakan warna asli dari gambar referensi atau sesuai kebebasan AI.', bg: 'bg-slate-200', text: 'text-black' },
+            { id: 'cyberpunk', label: 'Cyberpunk', colors: 'Neon Pink, Cyan, Bright Purple, Dark Blue', bg: 'bg-fuchsia-600', text: 'text-white' },
+            { id: 'pastel', label: 'Pastel / Soft', colors: 'Soft Pink, Baby Blue, Mint Green, Peach', bg: 'bg-pink-200', text: 'text-slate-800' },
+            { id: 'monochrome', label: 'Monokrom', colors: 'Black, White, High Contrast Shades of Gray', bg: 'bg-neutral-800', text: 'text-white' },
+            { id: 'vintage', label: 'Vintage / Retro', colors: 'Sepia, Warm Brown, Muted Gold, Olive Green', bg: 'bg-amber-700', text: 'text-amber-50' },
+            { id: 'earth', label: 'Earth Tones', colors: 'Forest Green, Terracotta, Muddy Brown, Sand', bg: 'bg-emerald-800', text: 'text-white' },
+            { id: 'custom', label: 'Custom...', colors: 'Kustomisasi sendiri', bg: 'bg-white', text: 'text-black' }
+        ];
+
+        function init() {
+            lucide.createIcons();
+            const grid = document.getElementById('workflowGrid');
+            grid.innerHTML = ''; 
+            
+            workflows.forEach(w => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-white border-4 border-black p-4 text-left hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all btn-neo group';
+                btn.onclick = () => selectWorkflow(w.id);
+                btn.innerHTML = `
+                    <div class="w-10 h-10 bg-black text-white flex items-center justify-center mb-4 group-hover:bg-green-400 group-hover:text-black transition-colors border-2 border-black"><i data-lucide="${w.icon}"></i></div>
+                    <h3 class="font-black text-[11px] mb-1 uppercase tracking-tight">${w.title}</h3>
+                    <p class="text-[9px] text-slate-500 leading-tight font-bold">${w.desc}</p>
+                `;
+                grid.appendChild(btn);
+            });
+            
+            const ratioGrid = document.getElementById('ratioGrid');
+            ratioGrid.innerHTML = '';
+            ratios.forEach(r => {
+                const btn = document.createElement('button');
+                btn.id = `ratio-${r.id}`;
+                btn.className = `p-2 border-2 font-black text-[9px] uppercase transition-all ${r.id === '1:1' ? 'bg-black text-white border-black' : 'bg-white border-slate-200 hover:border-black'}`;
+                btn.onclick = () => setRatio(r.id);
+                btn.innerText = `${r.label} (${r.sub})`;
+                ratioGrid.appendChild(btn);
+            });
+
+            const paletteGrid = document.getElementById('paletteGrid');
+            paletteGrid.innerHTML = '';
+            palettes.forEach(p => {
+                const btn = document.createElement('button');
+                btn.id = `palette-${p.id}`;
+                btn.className = `p-2 border-2 font-black text-[9px] uppercase transition-all ${p.id === 'default' ? 'border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'border-slate-200 hover:border-black'} ${p.bg} ${p.text}`;
+                btn.onclick = () => setPalette(p.id);
+                btn.innerText = p.label;
+                paletteGrid.appendChild(btn);
+            });
+
+            lucide.createIcons();
+        }
+
+        function resetToHome() {
+            if(isProcessing) return; 
+            activeWorkflow = null;
+            document.getElementById('workflowScreen').classList.add('hidden');
+            document.getElementById('homeScreen').classList.remove('hidden');
+        }
+
+        function selectWorkflow(id) {
+            activeWorkflow = id;
+            document.getElementById('homeScreen').classList.add('hidden');
+            document.getElementById('workflowScreen').classList.remove('hidden');
+            document.getElementById('activeWorkflowTitle').innerText = workflows.find(w => w.id === id)?.title || id.replace(/_/g, ' ').toUpperCase();
+            
+            // Pengaturan panel opsi
+            document.getElementById('enhanceOptions').classList.toggle('hidden', id !== 'enhance');
+            document.getElementById('bgOptions').classList.toggle('hidden', id !== 'bg');
+            document.getElementById('resizeOptions').classList.toggle('hidden', id !== 'resize');
+            document.getElementById('illustrateOptions').classList.toggle('hidden', id !== 'illustrate'); 
+            document.getElementById('modelOptions').classList.toggle('hidden', id !== 'model_studio');
+            document.getElementById('metadataOptions').classList.toggle('hidden', id !== 'metadata_gen');
+            document.getElementById('iconGenOptions').classList.toggle('hidden', id !== 'icon_gen');
+
+            const customPromptWrapper = document.getElementById('customPromptWrapper');
+            const customPromptLabel = document.getElementById('customPromptLabel');
+            const customPrompt = document.getElementById('customPrompt');
+            const inputMediaLabel = document.getElementById('inputMediaLabel');
+            
+            // Icon Gen opsional upload gambar
+            if(id === 'icon_gen') {
+                inputMediaLabel.innerText = "INPUT MEDIA (OPSIONAL)";
+            } else {
+                inputMediaLabel.innerText = "INPUT MEDIA";
+            }
+            
+            if(id === 'metadata_gen' || id === 'prompt_gen' || id === 'icon_gen') {
+                customPromptWrapper.classList.add('hidden');
+            } else {
+                customPromptWrapper.classList.remove('hidden');
+                if(id !== 'bg') customPrompt.value = ""; 
+
+                if (id === 'illustrate') {
+                    customPromptLabel.innerText = "Gaya Seni / Instruksi Tambahan (Wajib)";
+                    customPrompt.placeholder = "Contoh: Gambar gaya anime studio ghibli, 3D clay render, atau cat air...";
+                } else if (id === 'bg') {
+                    customPromptLabel.innerText = "Instruksi (Wajib diisi, atau klik Hapus Background)";
+                    customPrompt.placeholder = "Ketik perintah (cth: Hapus background, atau Ubah background jadi pemandangan kota)...";
+                } else {
+                    customPromptLabel.innerText = "Instruksi Tambahan (Opsional)";
+                    customPrompt.placeholder = "Tambahkan detail...";
+                }
+            }
+
+            updateUIState();
+            window.scrollTo(0, 0);
+        }
+
+        function setIconStyle(style) {
+            currentIconStyle = style;
+            const styles = ['Color', 'Outline', 'Flat', 'UI'];
+            
+            styles.forEach(s => {
+                const btn = document.getElementById(`iconStyle-${s}`);
+                if (s === style) {
+                    btn.classList.add('border-black', 'bg-slate-100', 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]');
+                    btn.classList.remove('border-slate-200', 'bg-white');
+                } else {
+                    btn.classList.remove('border-black', 'bg-slate-100', 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]');
+                    btn.classList.add('border-slate-200', 'bg-white');
+                }
+            });
+        }
+
+        function setPalette(id) {
+            currentPalette = id;
+            palettes.forEach(opt => {
+                const el = document.getElementById(`palette-${opt.id}`);
+                if(opt.id === id) {
+                    el.classList.add('border-black', 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]');
+                    el.classList.remove('border-slate-200');
+                } else {
+                    el.classList.remove('border-black', 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]');
+                    el.classList.add('border-slate-200');
+                }
+            });
+
+            const customInput = document.getElementById('customPaletteInput');
+            if (id === 'custom') {
+                customInput.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+            }
+        }
+
+        function fillRemoveBgPrompt() {
+            const promptEl = document.getElementById('customPrompt');
+            if (!promptEl.value.includes(REMOVE_BG_PROMPT)) {
+                if (promptEl.value.trim() === "") {
+                    promptEl.value = REMOVE_BG_PROMPT;
+                } else {
+                    promptEl.value = REMOVE_BG_PROMPT + ", " + promptEl.value;
+                }
+            }
+            promptEl.classList.add('bg-green-50');
+            setTimeout(() => promptEl.classList.remove('bg-green-50'), 500);
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    sourceImage = ev.target.result;
+                    document.getElementById('sourcePreview').src = sourceImage;
+                    document.getElementById('sourcePreview').classList.remove('hidden');
+                    document.getElementById('uploadPlaceholder').classList.add('hidden');
+                    document.getElementById('clearBtn').classList.remove('hidden');
+                    updateUIState();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleRefSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    refImage = ev.target.result;
+                    document.getElementById('refPreview').src = refImage;
+                    document.getElementById('refPreview').classList.remove('hidden');
+                    document.getElementById('refPlaceholder').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearInput() {
+            sourceImage = null;
+            refImage = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('refInput').value = '';
+            document.getElementById('sourcePreview').classList.add('hidden');
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('clearBtn').classList.add('hidden');
+            document.getElementById('refPreview').classList.add('hidden');
+            document.getElementById('refPlaceholder').classList.remove('hidden');
+            document.getElementById('resultState').innerHTML = '';
+            document.getElementById('resultState').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+            updateUIState();
+        }
+
+        function updateModelUI() {
+            const type = document.getElementById('modelType').value;
+            const detailsWrapper = document.getElementById('modelDetailsWrapper');
+            const refUploadWrapper = document.getElementById('refUploadWrapper');
+
+            if (type === 'Tanpa Model') {
+                detailsWrapper.classList.add('hidden');
+            } else {
+                detailsWrapper.classList.remove('hidden');
+                if(type === 'Mannequin') {
+                    refUploadWrapper.classList.add('hidden');
+                } else {
+                    refUploadWrapper.classList.remove('hidden');
+                }
+            }
+        }
+
+        function checkCustomAge() {
+            const val = document.getElementById('modelAge').value;
+            const input = document.getElementById('modelAgeCustom');
+            if(val === 'Custom') input.classList.remove('hidden');
+            else input.classList.add('hidden');
+        }
+
+        function setRatio(id) {
+            currentRatio = id;
+            ratios.forEach(r => {
+                const btn = document.getElementById(`ratio-${r.id}`);
+                if (btn) {
+                    if(r.id === id) {
+                        btn.classList.add('bg-black', 'text-white', 'border-black');
+                        btn.classList.remove('bg-white', 'border-slate-200');
+                    } else {
+                        btn.classList.remove('bg-black', 'text-white', 'border-black');
+                        btn.classList.add('bg-white', 'border-slate-200');
+                    }
+                }
+            });
+        }
+
+        function getCompositedImage(mainImgB64, refImgB64) {
+            return new Promise((resolve) => {
+                const img1 = new Image();
+                const img2 = new Image();
+                img1.onload = () => {
+                    img2.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img1.width + img2.width;
+                        canvas.height = Math.max(img1.height, img2.height);
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = "#000";
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img1, 0, 0);
+                        ctx.drawImage(img2, img1.width, 0);
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    img2.src = refImgB64;
+                };
+                img1.src = mainImgB64;
+            });
+        }
+
+        function updateUIState() {
+            const btn = document.getElementById('runBtn');
+            
+            // Logic state tombol submit
+            if (activeWorkflow === 'icon_gen') {
+                // Untuk Icon Gen, prompt wajib, image opsional
+                const hasKeyword = document.getElementById('iconKeyword') && document.getElementById('iconKeyword').value.trim().length > 0;
+                btn.disabled = isProcessing || !hasKeyword;
+            } else {
+                // Yang lain wajib ada source image
+                btn.disabled = isProcessing || !sourceImage;
+            }
+            
+            if(isProcessing) {
+                btn.innerHTML = `<div class="loader w-4 h-4 border-2 border-white border-t-transparent"></div> PROCESSING...`;
+            } else {
+                btn.innerHTML = `<i data-lucide="rocket" class="w-[14px] h-[14px]"></i> <span>RUN WORKFLOW</span>`;
+                lucide.createIcons();
+            }
+        }
+
+        function preprocessImage(base64Str, ratioStr) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    const [wRatio, hRatio] = ratioStr.split(':').map(Number);
+                    const targetRatio = wRatio / hRatio;
+                    
+                    const MAX_DIM = 1024; 
+                    let canvasW, canvasH;
+
+                    if (targetRatio > 1) { 
+                        canvasW = MAX_DIM;
+                        canvasH = Math.round(MAX_DIM / targetRatio);
+                    } else { 
+                        canvasH = MAX_DIM;
+                        canvasW = Math.round(MAX_DIM * targetRatio);
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = canvasW;
+                    canvas.height = canvasH;
+                    const ctx = canvas.getContext('2d');
+                    
+                    ctx.fillStyle = "#000000"; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    const srcRatio = img.width / img.height;
+                    let drawW, drawH;
+
+                    if (srcRatio > targetRatio) {
+                        drawW = canvasW;
+                        drawH = canvasW / srcRatio;
+                    } else {
+                        drawH = canvasH;
+                        drawW = canvasH * srcRatio;
+                    }
+                    
+                    const drawX = (canvasW - drawW) / 2;
+                    const drawY = (canvasH - drawH) / 2;
+                    
+                    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = (e) => reject(e);
+                img.src = base64Str;
+            });
+        }
+
+        function cropToSquare(base64Str) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const minDim = Math.min(img.width, img.height);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = minDim;
+                    canvas.height = minDim;
+                    const ctx = canvas.getContext('2d');
+                    
+                    const sx = (img.width - minDim) / 2;
+                    const sy = (img.height - minDim) / 2;
+                    
+                    ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, minDim, minDim);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.src = base64Str;
+            });
+        }
+
+        function applyHighResUpscale(base64Str, scaleFactorStr) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    const multiplier = parseFloat(scaleFactorStr.replace('x', ''));
+                    const targetW = Math.round(img.width * multiplier);
+                    const targetH = Math.round(img.height * multiplier);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = targetW;
+                    canvas.height = targetH;
+                    const ctx = canvas.getContext('2d');
+                    
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    
+                    ctx.drawImage(img, 0, 0, targetW, targetH);
+                    resolve(canvas.toDataURL('image/png', 1.0));
+                };
+                img.onerror = (e) => reject(e);
+                img.src = base64Str;
+            });
+        }
+
+        function removeChromaKey(base64Str) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        
+                        if (g > 150 && g > r * 1.5 && g > b * 1.5) {
+                            let greenness = g - Math.max(r, b);
+                            if (greenness > 40) {
+                                data[i + 3] = 0; 
+                            } else {
+                                data[i + 3] = Math.max(0, 255 - (greenness * 6));
+                                data[i+1] = Math.min(r, b); 
+                            }
+                        }
+                    }
+                    
+                    ctx.putImageData(imageData, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.src = base64Str;
+            });
+        }
+
+        // Fungsi API yang support text-only jika imageSourceOverride di set null
+        async function callGemini(promptText, mode = 'image', targetRatio = null, imageSourceOverride = null) {
+            const textModel = 'gemini-2.5-flash-preview-09-2025';
+            const imageModel = 'gemini-2.5-flash-image-preview'; 
+            const modelName = mode === 'text' ? textModel : imageModel;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            
+            // Siapkan parts untuk dikirim ke API
+            const parts = [{ text: promptText }];
+            
+            // Jika ada gambar (wajib untuk workflow selain Icon Gen)
+            if (imageSourceOverride) {
+                let mimeType = "image/png";
+                let base64Data = imageSourceOverride;
+                
+                const matchData = imageSourceOverride.match(/^data:(image\/[a-zA-Z0-9\-\+]+);base64,(.+)$/);
+                if (matchData) {
+                    mimeType = matchData[1];
+                    base64Data = matchData[2];
+                } else if (imageSourceOverride.includes(',')) {
+                    base64Data = imageSourceOverride.split(',')[1];
+                }
+                parts.push({ inlineData: { mimeType: mimeType, data: base64Data } });
+            }
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: parts
+                }]
+            };
+
+            if (mode === 'image') {
+                payload.generationConfig = { responseModalities: ["TEXT", "IMAGE"] };
+            }
+
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `API Error (${res.status})`);
+                    }
+
+                    const data = await res.json();
+                    
+                    if (data.promptFeedback?.blockReason) throw new Error("Diblokir filter keamanan: " + data.promptFeedback.blockReason);
+                    if (data.candidates?.[0]?.finishReason === "SAFETY") throw new Error("Diblokir oleh filter keamanan AI. Gunakan instruksi yang lebih aman.");
+                    if (!data.candidates?.length) throw new Error("Tidak ada hasil yang digenerate.");
+                    
+                    if (mode === 'text') {
+                        return data.candidates[0].content.parts[0].text;
+                    } else {
+                        const part = data.candidates[0].content?.parts?.find(p => p.inlineData);
+                        if (!part) throw new Error("Tidak ada data gambar yang dikembalikan dari respons server.");
+                        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                    }
+                } catch (e) {
+                    if (i === 4) throw e; 
+                    await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000)); 
+                }
+            }
+        }
+
+        async function executeWorkflow() {
+            // Bypass khusus untuk icon_gen yang tidak perlu image
+            if (activeWorkflow !== 'icon_gen' && !sourceImage) return;
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            updateUIState();
+            
+            const emptyState = document.getElementById('emptyState');
+            const loadingState = document.getElementById('loadingState');
+            const resultState = document.getElementById('resultState');
+            const statusText = document.getElementById('statusText');
+            
+            emptyState.classList.add('hidden');
+            resultState.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            
+            try {
+                const custom = document.getElementById('customPrompt').value || "";
+                let results = [];
+
+                if (activeWorkflow === 'icon_gen') {
+                    // DIUBAH MENJADI 16 SET ICON
+                    statusText.innerText = "MENGHASILKAN 16 SET ICON...";
+                    const keyword = document.getElementById('iconKeyword').value.trim();
+                    
+                    let stylePrompt = "";
+                    
+                    // PENYESUAIAN PROMPT STYLE (SEMAKIN DIPERKETAT AGAR TIDAK MUNCUL 3D/GRADASI)
+                    switch(currentIconStyle) {
+                        case 'Color': 
+                            stylePrompt = "colored outline icon style, thick black continuous outlines filled with bright flat solid colors, detailed yet simple 2D vector graphic, playful and modern microstock illustration"; 
+                            break;
+                        case 'Outline': 
+                            stylePrompt = "pure outline icon style, black line art on pure white background, consistent medium stroke weight, strictly no fill colors, simple minimalist 2D vector shapes"; 
+                            break;
+                        case 'Flat': 
+                            // STYLE FLAT DIPERKUAT DENGAN NEGATIVE PROMPTING DI DALAMNYA
+                            stylePrompt = "100% flat 2D vector illustration style, absolutely NO gradients, NO 3D effects, NO lighting shadows, strictly NO outlines or strokes. Use vibrant solid block colors only. Crisp geometric shapes, modern minimalist graphic design"; 
+                            break;
+                        case 'UI': 
+                            stylePrompt = "minimalist UI icon style, very thin sharp black lines on pure white background, extremely simplified geometric symbols, wireframe app interface icons, no fill colors, flat 2D"; 
+                            break;
+                    }
+
+                    // STRUKTUR PROMPT DIUBAH MENJADI 4x4 GRID (16 ICONS)
+                    let prompt = `CRITICAL FORMAT REQUIREMENT: A perfect 4x4 grid layout containing exactly 16 separate, evenly spaced icons. Pure white background.
+SUBJECT: Create 16 different variations or items related to the concept: "${keyword}".
+STYLE: ${stylePrompt}. 
+CONSTRAINTS: Professional microstock vector graphics, strictly no text, no letters, no watermarks, items perfectly aligned in a symmetrical 4x4 grid. Each icon must be distinct but cohesive in style.`;
+                    
+                    // Jika user upload foto inspirasi
+                    if (sourceImage) {
+                        prompt = `CRITICAL FORMAT REQUIREMENT: A perfect 4x4 grid layout containing exactly 16 separate, evenly spaced icons. Pure white background.
+SUBJECT: Create 16 different variations or items related to the concept: "${keyword}". Use the provided reference image for thematic and structural inspiration.
+STYLE: ${stylePrompt}. 
+CONSTRAINTS: Professional microstock vector graphics, strictly no text, no letters, no watermarks, items perfectly aligned in a symmetrical 4x4 grid. Each icon must be distinct but cohesive in style.`;
+                    }
+
+                    let img = await callGemini(prompt, 'image', null, sourceImage || null);
+                    statusText.innerText = "UPSCALING HASIL ICON (2X)...";
+                    img = await applyHighResUpscale(img, "2x");
+                    renderSingleResult(img, false);
+                }
+                else if (activeWorkflow === 'metadata_gen') {
+                    statusText.innerText = "MENGHASILKAN METADATA MICROSTOCK...";
+                    const text = await callGemini(
+                        "Analyze this image for a commercial microstock agency submission (like Shutterstock, Adobe Stock, Freepik). " +
+                        "1. Create a highly descriptive, commercially attractive Title in English (maximum 200 characters). " +
+                        "2. Generate exactly 50 highly relevant conceptual and descriptive keywords in English, separated by commas. Sort them from most important to least important. " +
+                        "DO NOT use bullet points, numbering, or quotation marks for the keywords. " +
+                        "Format the output EXACTLY like this:\n\nTITLE: [Your generated title here]\n---BATAS---\nKEYWORDS: [keyword1, keyword2, keyword3, ...]", 
+                        'text', null, sourceImage
+                    );
+                    renderMetadataResult(text);
+                }
+                else if (activeWorkflow === 'prompt_gen') {
+                    statusText.innerText = "MENGANALISIS GAMBAR...";
+                    const text = await callGemini(
+                        "Analisis gambar ini untuk keperluan prompt AI Art Generator. Berikan output HANYA dalam Bahasa Indonesia. " +
+                        "Pisahkan hasil menjadi dua bagian dengan pemisah tepat '---BATAS---'.\n\nBagian 1: Prompt Singkat (Satu kalimat padat yang menjelaskan subjek utama).\n---BATAS---\nBagian 2: Prompt Detail (Deskripsi lengkap mencakup pencahayaan, sudut kamera, gaya artistik, warna, dan suasana).\n\nJANGAN gunakan bahasa inggris dan jangan ada teks pembuka lain.", 
+                        'text', null, sourceImage
+                    );
+                    renderTextResult(text);
+                } 
+                else if (activeWorkflow === 'illustrate') {
+                    statusText.innerText = "MENGHASILKAN VARIASI ILUSTRASI (RESOLUSI 2K)...";
+                    const requestedStyle = custom ? custom : "High quality digital illustration";
+                    
+                    let colorInstruction = "";
+                    if (currentPalette === 'custom') {
+                        const customColor = document.getElementById('customPaletteInput').value;
+                        if (customColor) {
+                            colorInstruction = `Use exclusively these colors in the palette: ${customColor}. `;
+                        }
+                    } else if (currentPalette !== 'default') {
+                        const selectedPal = palettes.find(p => p.id === currentPalette);
+                        colorInstruction = `Use exclusively these colors in the palette: ${selectedPal.colors}. `;
+                    }
+
+                    const variations = [
+                        "Primary illustration interpretation. Focus on the main concept.",
+                        "Alternative creative composition in the exact same requested style."
+                    ];
+
+                    for (let i = 0; i < variations.length; i++) {
+                        statusText.innerText = `MENGHASILKAN ILUSTRASI ${i+1} DARI ${variations.length} (MOHON TUNGGU)...`;
+                        
+                        const prompt = `Redraw and transform the provided reference image into an illustration. Style to follow: ${requestedStyle}. ${colorInstruction} Approach details: ${variations[i]}. Make it highly detailed, sharp and professional.`;
+                        
+                        let img = await callGemini(prompt, 'image', null, sourceImage);
+                        statusText.innerText = `UPSCALING ILUSTRASI ${i+1}...`;
+                        img = await applyHighResUpscale(img, "2x");
+                        results.push(img);
+                    }
+                    renderMultiResult(results);
+                } 
+                else if (activeWorkflow === 'model_studio') {
+                    statusText.innerText = "MENYESUAIKAN CANVAS (1:1)...";
+                    const squareImage = await preprocessImage(sourceImage, '1:1');
+                    const modelType = document.getElementById('modelType').value;
+                    const location = document.getElementById('modelLocation').value;
+                    let promptBase = "";
+
+                    if (modelType === 'Tanpa Model') {
+                        promptBase = `Professional product photography. Setting: ${location}. The product is the main focus.`;
+                    } else {
+                        const gender = document.getElementById('modelGender').value;
+                        const ageSelect = document.getElementById('modelAge').value;
+                        const ageCustom = document.getElementById('modelAgeCustom').value;
+                        const age = ageSelect === 'Custom' ? ageCustom : ageSelect;
+                        promptBase = `Professional photoshoot. A ${age} ${gender} ${modelType} modeling the product. Setting: ${location}. High fashion, cinematic lighting.`;
+                    }
+
+                    let faceInstruction = "";
+                    let imageForModelStudio = squareImage;
+                    
+                    if (modelType === 'Manusia' && refImage) {
+                         imageForModelStudio = await getCompositedImage(squareImage, refImage);
+                         faceInstruction = "CHARACTER REFERENCE: Use the right side of the input image as a strict visual reference for the model's facial features and identity. The left side is the product. Ensure the generated model bears a strong resemblance to the reference face.";
+                    }
+
+                    const fillInstruction = "Input image has black bars for padding. GENERATE content over these black areas to create a full 1:1 scene.";
+                    
+                    const scenarios = [
+                        `TASK: Create a Close up shot. ${promptBase}. ${custom}. ${faceInstruction}. ${fillInstruction}. Ensure the product is integrated naturally. Output must be 1:1 Square.`,
+                        `TASK: Create a Medium shot (waist up). ${promptBase}. ${custom}. ${faceInstruction}. ${fillInstruction}. Output must be 1:1 Square.`
+                    ];
+
+                     for (let i = 0; i < scenarios.length; i++) {
+                        statusText.innerText = `VIRTUAL PHOTOSHOOT ${i+1} DARI ${scenarios.length} (MOHON TUNGGU)...`;
+                        let img = await callGemini(scenarios[i], 'image', null, imageForModelStudio); 
+                        img = await cropToSquare(img);
+                        results.push(img);
+                    }
+                    renderMultiResult(results);
+                } 
+                else {
+                    statusText.innerText = "MEMPROSES PIXEL (AI)...";
+                    let p = "Ensure high quality output.";
+                    let imageToUse = sourceImage; 
+                    let isRemovingBg = false;
+
+                    if(activeWorkflow === 'enhance') {
+                        const noiseLvl = document.getElementById('enhanceNoise').value;
+                        let noiseInst = "Apply balanced noise reduction.";
+                        if(noiseLvl === 'low') noiseInst = "Apply minimal noise reduction, keep natural textures and slight film grain. Do NOT over-smooth.";
+                        if(noiseLvl === 'high') noiseInst = "Apply aggressive noise reduction, make the image ultra-smooth and extremely clean without artifacts.";
+                        p = `TASK: Photo Enhancement for Microstock. Upscale detail and ${noiseInst} Improve global sharpness, denoise, enhance lighting details to professional high-quality studio standard, hyper-realistic, photorealistic.`;
+                    }
+
+                    if(activeWorkflow === 'bg') {
+                        if (!custom) {
+                            throw new Error("Prompt instruksi tidak boleh kosong. Klik 'Hapus Background' atau ketik instruksi Anda.");
+                        }
+
+                        isRemovingBg = custom.toLowerCase().includes("hapus background") || custom.toLowerCase().includes("remove background");
+
+                        if (isRemovingBg) {
+                            p = `CRITICAL INSTRUCTION: Retain the main subject EXACTLY as it is. DO NOT alter the core subject. Replace the ENTIRE background with a perfectly flat, solid, pure neon green color (Hex #00FF00) without any shadows or gradients. This is for chroma key extraction. APPLY THESE ADDITIONAL INSTRUCTIONS TO THE SUBJECT: ${custom}`;
+                        } else {
+                            p = `CRITICAL INSTRUCTION: Retain the main subject. Apply this modification to the background/image: ${custom}`;
+                        }
+                    }
+                    
+                    if(activeWorkflow === 'resize') {
+                        statusText.innerText = "PRE-PROCESSING CANVAS...";
+                        imageToUse = await preprocessImage(sourceImage, currentRatio);
+                        
+                        statusText.innerText = "GENERATIVE FILLING...";
+                        let expandInstruction = "The input image contains a central subject surrounded by black padding.";
+                        if (currentRatio === '16:9') expandInstruction += " Fill the black side bars by extending the scene horizontally.";
+                        else if (currentRatio === '9:16') expandInstruction += " Fill the black top/bottom bars by extending the scene vertically.";
+                        else expandInstruction += " Fill the surrounding black space naturally.";
+                        p = `Outpainting Task: ${expandInstruction} Seamlessly generate the missing background to fill the black areas. Blend perfectly.`;
+                    }
+                    
+                    let res = await callGemini(activeWorkflow === 'bg' ? p : `${p} ${custom}`, 'image', null, imageToUse);
+                    
+                    if(activeWorkflow === 'enhance') {
+                        const scaleLvl = document.getElementById('enhanceUpscale').value;
+                        statusText.innerText = `UPSCALING FISIK KE RESOLUSI ${scaleLvl.toUpperCase()}...`;
+                        res = await applyHighResUpscale(res, scaleLvl); 
+                    }
+
+                    if(activeWorkflow === 'bg' && isRemovingBg) {
+                        statusText.innerText = "MEMPROSES TRANSPARANSI & MEMBERSIHKAN HALO...";
+                        res = await removeChromaKey(res);
+                    }
+
+                    renderSingleResult(res, isRemovingBg);
+                }
+            } catch (err) {
+                console.error(err);
+                showError("Gagal memproses: " + (err.message || "Unknown error"));
+                emptyState.classList.remove('hidden');
+            } finally {
+                loadingState.classList.add('hidden');
+                isProcessing = false;
+                updateUIState();
+            }
+        }
+
+        function renderSingleResult(img, isTransparent = false) {
+            const container = document.getElementById('resultState');
+            const bgClass = isTransparent ? "transparent-pattern" : "bg-slate-100";
+            
+            container.innerHTML = `
+                <div class="bg-white border-4 border-black p-2 shadow-lg max-w-full">
+                    <img src="${img}" class="max-w-full h-auto max-h-[400px] object-contain border-2 border-slate-200 ${bgClass}">
+                </div>
+                <div class="flex gap-4 w-full justify-center">
+                    <button onclick="openPreview('${img}')" class="bg-white border-4 border-black px-6 py-3 text-[10px] font-black uppercase neo-shadow hover:-translate-y-1 transition-transform">Preview Resolusi Penuh</button>
+                    <button onclick="downloadImage('${img}')" class="bg-black text-white px-6 py-3 text-[10px] font-black uppercase border-4 border-black hover:-translate-y-1 transition-transform shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">Download HQ</button>
+                </div>
+            `;
+            container.classList.remove('hidden');
+        }
+
+        function renderMultiResult(images) {
+            const container = document.getElementById('resultState');
+            let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-[800px]">';
+            images.forEach((img, idx) => {
+                html += `
+                    <div class="bg-white border-4 border-black p-2 flex flex-col gap-2 neo-shadow hover:-translate-y-1 transition-transform duration-300">
+                        <div class="aspect-square bg-slate-100 border-2 border-slate-200 overflow-hidden relative group">
+                            <img src="${img}" class="w-full h-full object-cover" style="aspect-ratio: 1/1; object-fit: cover;">
+                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button onclick="openPreview('${img}')" class="bg-white px-4 py-2 font-black text-[10px] uppercase border-2 border-black">Zoom</button>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-auto">
+                            <button onclick="downloadImage('${img}')" class="w-full bg-black text-white py-2 text-[8px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-800">
+                                <i data-lucide="download" class="w-3 h-3"></i> Simpan
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function renderTextResult(text) {
+            const container = document.getElementById('resultState');
+            let p1 = "Gagal memuat prompt singkat.";
+            let p2 = "Gagal memuat prompt detail.";
+            
+            if (text.includes('---BATAS---')) {
+                const parts = text.split('---BATAS---');
+                p1 = parts[0].replace(/.*Bagian 1:|.*Prompt Singkat:/is, '').replace(/\*\*/g, '').trim();
+                p2 = parts[1].replace(/.*Bagian 2:|.*Prompt Detail:/is, '').replace(/\*\*/g, '').trim();
+            }
+
+            container.innerHTML = `
+                <div class="w-full max-w-2xl space-y-6">
+                    <div class="bg-white border-4 border-black p-5 neo-shadow relative hover:-translate-y-1 transition-transform">
+                        <div class="absolute -top-3 left-4 bg-black text-white px-3 py-1 text-[9px] font-bold uppercase tracking-widest border-2 border-white shadow-sm">
+                            <i data-lucide="zap" class="w-3 h-3 inline mr-1"></i>Prompt Singkat (Bisa Diedit)
+                        </div>
+                        <textarea id="p1-content" class="w-full bg-slate-50 border-2 border-slate-200 focus:border-black font-mono text-xs leading-relaxed text-slate-800 mt-3 resize-none h-24 p-3 focus:outline-none transition-colors placeholder-slate-400">${p1}</textarea>
+                        <div class="mt-2 flex justify-end">
+                            <button onclick="copyText(this, 'p1-content')" class="text-[9px] font-black uppercase px-4 py-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-all flex items-center gap-2">
+                                <i data-lucide="copy" class="w-3 h-3"></i> Copy Prompt
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border-4 border-black p-5 neo-shadow relative hover:-translate-y-1 transition-transform">
+                        <div class="absolute -top-3 left-4 bg-black text-white px-3 py-1 text-[9px] font-bold uppercase tracking-widest border-2 border-white shadow-sm">
+                            <i data-lucide="align-left" class="w-3 h-3 inline mr-1"></i>Prompt Detail (Bisa Diedit)
+                        </div>
+                        <textarea id="p2-content" class="w-full bg-slate-50 border-2 border-slate-200 focus:border-black font-mono text-xs leading-relaxed text-slate-800 mt-3 resize-none h-48 p-3 focus:outline-none transition-colors custom-scroll placeholder-slate-400">${p2}</textarea>
+                        <div class="mt-2 flex justify-end">
+                            <button onclick="copyText(this, 'p2-content')" class="text-[9px] font-black uppercase px-4 py-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-all flex items-center gap-2">
+                                <i data-lucide="copy" class="w-3 h-3"></i> Copy Prompt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function renderMetadataResult(text) {
+            const container = document.getElementById('resultState');
+            let titleText = "Failed to generate title.";
+            let keywordsText = "Failed to generate keywords.";
+            
+            if (text.includes('---BATAS---')) {
+                const parts = text.split('---BATAS---');
+                titleText = parts[0].replace(/.*TITLE:/is, '').replace(/\*\*/g, '').trim();
+                keywordsText = parts[1].replace(/.*KEYWORDS:/is, '').replace(/\*\*/g, '').trim();
+            } else {
+                const titleMatch = text.match(/TITLE:\s*(.*?)(?=\n|$)/i);
+                const kwMatch = text.match(/KEYWORDS:\s*(.*)/is);
+                if (titleMatch) titleText = titleMatch[1].trim();
+                if (kwMatch) keywordsText = kwMatch[1].trim();
+            }
+
+            let kwCount = keywordsText.split(',').map(s => s.trim()).filter(s => s.length > 0).length;
+
+            container.innerHTML = `
+                <div class="w-full max-w-2xl space-y-6">
+                    <div class="flex justify-center mb-4">
+                        <img src="${sourceImage}" class="h-24 object-contain border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+                    </div>
+
+                    <div class="bg-white border-4 border-black p-5 neo-shadow relative hover:-translate-y-1 transition-transform">
+                        <div class="absolute -top-3 left-4 bg-green-500 text-black px-3 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <i data-lucide="type" class="w-3 h-3 inline mr-1"></i> English Title
+                        </div>
+                        <textarea id="meta-title" class="w-full bg-slate-50 border-2 border-slate-200 focus:border-black font-mono text-sm leading-relaxed text-slate-800 mt-3 resize-none h-20 p-3 focus:outline-none transition-colors">${titleText}</textarea>
+                        <div class="mt-2 flex justify-between items-center">
+                            <span class="text-[8px] font-bold text-slate-400 uppercase">Max 200 Characters</span>
+                            <button onclick="copyText(this, 'meta-title')" class="text-[9px] font-black uppercase px-4 py-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-all flex items-center gap-2">
+                                <i data-lucide="copy" class="w-3 h-3"></i> Copy Title
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border-4 border-black p-5 neo-shadow relative hover:-translate-y-1 transition-transform">
+                        <div class="absolute -top-3 left-4 bg-yellow-400 text-black px-3 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <i data-lucide="tags" class="w-3 h-3 inline mr-1"></i> English Keywords
+                        </div>
+                        <textarea id="meta-keywords" class="w-full bg-slate-50 border-2 border-slate-200 focus:border-black font-mono text-xs leading-relaxed text-slate-800 mt-3 resize-none h-32 p-3 focus:outline-none transition-colors">${keywordsText}</textarea>
+                        <div class="mt-2 flex justify-between items-center">
+                            <span class="text-[8px] font-bold text-slate-500 uppercase bg-slate-200 px-2 py-1 rounded">Estimated: ${kwCount} Keywords</span>
+                            <button onclick="copyText(this, 'meta-keywords')" class="text-[9px] font-black uppercase px-4 py-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-all flex items-center gap-2">
+                                <i data-lucide="copy" class="w-3 h-3"></i> Copy Keywords
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function openPreview(imgStr) {
+            const modal = document.getElementById('previewModal');
+            const previewImg = document.getElementById('previewFullImage');
+            const resText = document.getElementById('previewResolution');
+            
+            previewImg.src = imgStr;
+            previewImg.style.aspectRatio = "auto"; 
+            previewImg.style.objectFit = "contain"; 
+            previewImg.style.width = "auto";
+            previewImg.style.height = "75vh"; 
+
+            const tempImg = new Image();
+            tempImg.onload = function() {
+                resText.innerText = `RESOLUSI FISIK: ${this.width} x ${this.height}px`;
+            }
+            tempImg.src = imgStr;
+
+            document.getElementById('downloadBtn').onclick = () => downloadImage(imgStr);
+            modal.classList.remove('hidden');
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        function downloadImage(url) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `mysephia-highres-${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyText(btn, elementId) {
+            const el = document.getElementById(elementId);
+            const text = el.tagName === 'TEXTAREA' ? el.value : el.innerText;
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    animateCopySuccess(btn);
+                }).catch(err => {
+                    fallbackCopy(text, btn);
+                });
+            } else {
+                fallbackCopy(text, btn);
+            }
+        }
+
+        function fallbackCopy(text, btn) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed"; 
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) animateCopySuccess(btn);
+            } catch (err) {
+                console.error('Fallback copy failed', err);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        function animateCopySuccess(btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> COPIED!`;
+            btn.classList.add('bg-green-400', 'border-green-600', 'text-white');
+            btn.classList.remove('bg-white', 'hover:bg-black');
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('bg-green-400', 'border-green-600', 'text-white');
+                btn.classList.add('bg-white', 'hover:bg-black');
+                lucide.createIcons();
+            }, 2000);
+        }
+
+        function showError(msg) {
+            document.getElementById('errorMessage').innerText = msg;
+            document.getElementById('errorToast').classList.remove('hidden');
+            setTimeout(hideError, 5000);
+        }
+
+        function hideError() {
+            document.getElementById('errorToast').classList.add('hidden');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
