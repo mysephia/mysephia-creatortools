@@ -811,7 +811,7 @@
 
         // Fungsi API yang support text-only jika imageSourceOverride di set null
         async function callGemini(promptText, mode = 'image', targetRatio = null, imageSourceOverride = null) {
-            const textModel = 'gemini-2.5-flash-preview-09-2025';
+            const textModel = 'gemini-1.5-flash';
             const imageModel = 'gemini-2.5-flash-image-preview'; 
             const modelName = mode === 'text' ? textModel : imageModel;
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
